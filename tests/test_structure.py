@@ -9,6 +9,8 @@ REQUIRED_FILES = [
     "build_war_state.py",
     "tools/countries.py",
     "tools/rojo_build.py",
+    "tools/gen_static_map.py",
+    "tools/required_build_paths.txt",
     "src/ServerScriptService/ServerMain.server.luau",
     "src/ServerScriptService/Systems/Data/DataService.luau",
     "src/ServerScriptService/Systems/Country/CountryService.luau",
@@ -76,7 +78,7 @@ REQUIRED_DIRS = [
     "src/ReplicatedStorage/Shared/Modules",
 ]
 
-WORKSPACE_FOLDERS = ["Map", "Buildings", "Roads", "Vehicles", "NPCs"]
+WORKSPACE_FOLDERS = ["Buildings", "Roads", "Vehicles", "NPCs"]
 
 
 def server_sources():
@@ -98,6 +100,9 @@ class StructureTests(unittest.TestCase):
             self.assertIn(name, workspace, name)
             self.assertEqual(workspace[name].get("$className"), "Folder", name)
             self.assertNotIn("$path", workspace[name], "%s must not point at an empty dir" % name)
+        # The static map is real place content generated into src/Workspace/Map (gen_static_map.py)
+        self.assertEqual(workspace["Map"]["$path"], "src/Workspace/Map")
+        self.assertEqual(workspace["Terrain"]["$className"], "Terrain")
 
     def test_no_dead_assets_mapping(self):
         replicated = json.loads(read("default.project.json"))["tree"]["ReplicatedStorage"]
@@ -172,7 +177,7 @@ class StructureTests(unittest.TestCase):
                 if child.name.startswith("."):
                     continue
                 n = child.name
-                for suffix in (".server.luau", ".client.luau", ".luau", ".json"):
+                for suffix in (".server.luau", ".client.luau", ".model.json", ".luau", ".json"):
                     if n.endswith(suffix):
                         n = n[: -len(suffix)]
                         break
