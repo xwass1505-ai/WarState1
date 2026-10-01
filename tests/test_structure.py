@@ -67,18 +67,16 @@ REQUIRED_FILES = [
     "AGENTS.md",
 ]
 
+# Only directories that actually contain files. Git does not store empty directories, so the
+# Workspace runtime folders are declared as explicit Folders in default.project.json instead.
 REQUIRED_DIRS = [
     "src/ReplicatedStorage/Shared/Config",
     "src/ReplicatedStorage/Shared/Constants",
     "src/ReplicatedStorage/Shared/Types",
     "src/ReplicatedStorage/Shared/Modules",
-    "src/ReplicatedStorage/Assets",
-    "src/Workspace/Map",
-    "src/Workspace/Buildings",
-    "src/Workspace/Roads",
-    "src/Workspace/Vehicles",
-    "src/Workspace/NPCs",
 ]
+
+WORKSPACE_FOLDERS = ["Map", "Buildings", "Roads", "Vehicles", "NPCs"]
 
 
 def server_sources():
@@ -93,6 +91,17 @@ class StructureTests(unittest.TestCase):
     def test_required_dirs_exist(self):
         missing = [d for d in REQUIRED_DIRS if not (ROOT / d).is_dir()]
         self.assertEqual(missing, [])
+
+    def test_workspace_folders_declared_in_project(self):
+        workspace = json.loads(read("default.project.json"))["tree"]["Workspace"]
+        for name in WORKSPACE_FOLDERS:
+            self.assertIn(name, workspace, name)
+            self.assertEqual(workspace[name].get("$className"), "Folder", name)
+            self.assertNotIn("$path", workspace[name], "%s must not point at an empty dir" % name)
+
+    def test_no_dead_assets_mapping(self):
+        replicated = json.loads(read("default.project.json"))["tree"]["ReplicatedStorage"]
+        self.assertNotIn("Assets", replicated)
 
     def test_project_json_paths_exist(self):
         project = json.loads(read("default.project.json"))
