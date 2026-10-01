@@ -1,0 +1,9 @@
+# Build outputs are produced by CI (real Rojo) and shipped in WarState_READY_BUILD.zip
+build/
+dist/
+ci_logs/
+WarState_READY_BUILD.zip
+__pycache__/
+*.pyc
+*.rbxlx.lock
+.rojo_bin/

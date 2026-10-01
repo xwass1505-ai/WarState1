@@ -6,9 +6,6 @@
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
       "$ignoreUnknownInstances": true,
-      "Assets": {
-        "$path": "src/ReplicatedStorage/Assets"
-      },
       "Shared": {
         "$path": "src/ReplicatedStorage/Shared"
       },
@@ -109,24 +106,19 @@
       "$className": "Workspace",
       "$ignoreUnknownInstances": true,
       "Map": {
-        "$path": "src/Workspace/Map",
-        "$ignoreUnknownInstances": true
+        "$className": "Folder"
       },
       "Buildings": {
-        "$path": "src/Workspace/Buildings",
-        "$ignoreUnknownInstances": true
+        "$className": "Folder"
       },
       "Roads": {
-        "$path": "src/Workspace/Roads",
-        "$ignoreUnknownInstances": true
+        "$className": "Folder"
       },
       "Vehicles": {
-        "$path": "src/Workspace/Vehicles",
-        "$ignoreUnknownInstances": true
+        "$className": "Folder"
       },
       "NPCs": {
-        "$path": "src/Workspace/NPCs",
-        "$ignoreUnknownInstances": true
+        "$className": "Folder"
       }
     }
   }
