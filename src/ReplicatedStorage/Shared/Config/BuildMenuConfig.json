@@ -1,0 +1,54 @@
+{
+  "Categories": [
+    {
+      "Id": "Roads",
+      "DisplayName": "Roads",
+      "Status": "IMPLEMENTED"
+    },
+    {
+      "Id": "Residential",
+      "DisplayName": "Residential",
+      "Status": "IMPLEMENTED"
+    },
+    {
+      "Id": "Business",
+      "DisplayName": "Business",
+      "Status": "IMPLEMENTED"
+    },
+    {
+      "Id": "Industry",
+      "DisplayName": "Industry",
+      "Status": "IMPLEMENTED"
+    },
+    {
+      "Id": "Infrastructure",
+      "DisplayName": "Infrastructure",
+      "Status": "IMPLEMENTED"
+    },
+    {
+      "Id": "Military",
+      "DisplayName": "Military",
+      "Status": "PLANNED"
+    },
+    {
+      "Id": "Services",
+      "DisplayName": "Services",
+      "Status": "PLANNED"
+    },
+    {
+      "Id": "Agriculture",
+      "DisplayName": "Agriculture",
+      "Status": "PLANNED"
+    },
+    {
+      "Id": "Resources",
+      "DisplayName": "Resources",
+      "Status": "PLANNED"
+    },
+    {
+      "Id": "Other",
+      "DisplayName": "Other",
+      "Status": "PLANNED"
+    }
+  ]
+}

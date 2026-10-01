@@ -1,0 +1,319 @@
+{
+  "Buildings": [
+    {
+      "Id": "SmallHouse",
+      "DisplayName": "Small House",
+      "ShortName": "House",
+      "Category": "Residential",
+      "StatsGroup": "Houses",
+      "Footprint": [
+        2,
+        2
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 4,
+      "BuildTimeSeconds": 12,
+      "Variants": [
+        "SmallHouse_A",
+        "SmallHouse_B",
+        "SmallHouse_C",
+        "SmallHouse_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 1
+      },
+      "Power": {
+        "Required": 1
+      }
+    },
+    {
+      "Id": "MediumHouse",
+      "DisplayName": "Medium House",
+      "ShortName": "House",
+      "Category": "Residential",
+      "StatsGroup": "Houses",
+      "Footprint": [
+        3,
+        2
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 8,
+      "BuildTimeSeconds": 18,
+      "Variants": [
+        "MediumHouse_A",
+        "MediumHouse_B",
+        "MediumHouse_C",
+        "MediumHouse_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 2
+      },
+      "Power": {
+        "Required": 2
+      }
+    },
+    {
+      "Id": "LargeHouse",
+      "DisplayName": "Large House",
+      "ShortName": "House",
+      "Category": "Residential",
+      "StatsGroup": "Houses",
+      "Footprint": [
+        4,
+        3
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 14,
+      "BuildTimeSeconds": 26,
+      "Variants": [
+        "LargeHouse_A",
+        "LargeHouse_B",
+        "LargeHouse_C",
+        "LargeHouse_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 3
+      },
+      "Power": {
+        "Required": 3
+      }
+    },
+    {
+      "Id": "Shop",
+      "DisplayName": "Corner Shop",
+      "ShortName": "Business",
+      "Category": "Business",
+      "StatsGroup": "Businesses",
+      "Footprint": [
+        2,
+        2
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 0,
+      "BuildTimeSeconds": 14,
+      "Variants": [
+        "Shop_A",
+        "Shop_B",
+        "Shop_C",
+        "Shop_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 1
+      },
+      "Power": {
+        "Required": 2
+      }
+    },
+    {
+      "Id": "Office",
+      "DisplayName": "Office",
+      "ShortName": "Business",
+      "Category": "Business",
+      "StatsGroup": "Businesses",
+      "Footprint": [
+        3,
+        3
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 0,
+      "BuildTimeSeconds": 22,
+      "Variants": [
+        "Office_A",
+        "Office_B",
+        "Office_C",
+        "Office_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 2
+      },
+      "Power": {
+        "Required": 4
+      }
+    },
+    {
+      "Id": "Workshop",
+      "DisplayName": "Workshop",
+      "ShortName": "Factory",
+      "Category": "Industry",
+      "StatsGroup": "Factories",
+      "Footprint": [
+        3,
+        2
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 0,
+      "BuildTimeSeconds": 20,
+      "Variants": [
+        "Workshop_A",
+        "Workshop_B",
+        "Workshop_C",
+        "Workshop_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 2
+      },
+      "Power": {
+        "Required": 4
+      }
+    },
+    {
+      "Id": "Factory",
+      "DisplayName": "Factory",
+      "ShortName": "Factory",
+      "Category": "Industry",
+      "StatsGroup": "Factories",
+      "Footprint": [
+        4,
+        3
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 0,
+      "BuildTimeSeconds": 30,
+      "Variants": [
+        "Factory_A",
+        "Factory_B",
+        "Factory_C",
+        "Factory_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 3
+      },
+      "Power": {
+        "Required": 8
+      }
+    },
+    {
+      "Id": "WaterTower",
+      "DisplayName": "Water Tower",
+      "ShortName": "Water Tower",
+      "Category": "Infrastructure",
+      "StatsGroup": "WaterTowers",
+      "Footprint": [
+        2,
+        2
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 0,
+      "BuildTimeSeconds": 16,
+      "Variants": [
+        "WaterTower_A",
+        "WaterTower_B",
+        "WaterTower_C",
+        "WaterTower_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 0,
+        "Production": 24,
+        "Capacity": 120,
+        "Radius": 20
+      },
+      "Power": {
+        "Required": 0
+      }
+    },
+    {
+      "Id": "WindGenerator",
+      "DisplayName": "Wind Generator",
+      "ShortName": "Wind Generator",
+      "Category": "Infrastructure",
+      "StatsGroup": "PowerSources",
+      "Footprint": [
+        2,
+        2
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 0,
+      "BuildTimeSeconds": 16,
+      "Variants": [
+        "WindGenerator_A",
+        "WindGenerator_B",
+        "WindGenerator_C",
+        "WindGenerator_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 0
+      },
+      "Power": {
+        "Required": 0,
+        "Production": 12,
+        "Radius": 16,
+        "Tier": "Small",
+        "Upkeep": {
+          "Fuel": 0
+        }
+      }
+    },
+    {
+      "Id": "Substation",
+      "DisplayName": "Substation",
+      "ShortName": "Substation",
+      "Category": "Infrastructure",
+      "StatsGroup": "PowerSources",
+      "Footprint": [
+        3,
+        3
+      ],
+      "ModelScale": 0.25,
+      "HousingCapacity": 0,
+      "BuildTimeSeconds": 32,
+      "Variants": [
+        "Substation_A",
+        "Substation_B",
+        "Substation_C",
+        "Substation_D"
+      ],
+      "Active": true,
+      "Cost": {
+        "Treasury": 0
+      },
+      "Water": {
+        "Required": 0
+      },
+      "Power": {
+        "Required": 0,
+        "Production": 60,
+        "Radius": 36,
+        "Tier": "Advanced",
+        "Upkeep": {
+          "Fuel": 1
+        }
+      }
+    }
+  ]
+}
