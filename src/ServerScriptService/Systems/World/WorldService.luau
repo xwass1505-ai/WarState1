@@ -1,6 +1,11 @@
--- WorldService: builds the game map once (ocean, central island, 6 player islands, exits, bridges)
--- and owns plot ownership. Plots are NEVER auto-assigned: the player picks a free plot after
--- creating/loading a country (ClaimPlot). No buildings, roads or citizens are pre-placed.
+-- WorldService: owns the STATIC map and plot ownership.
+-- The map (central island, 6 player islands, exits, bridges, trees, bushes, rocks, dirt paths,
+-- invisible boundaries, lobby spawn) is part of the place file: tools/gen_static_map.py writes it
+-- to src/Workspace/Map and the real `rojo build` puts it into build/WarState.rbxlx.
+-- Nothing is generated on PlayerAdded. At server start (before any player can join) this service
+-- only: fills real Terrain water (Rojo cannot serialize terrain voxels), validates the static map
+-- and attaches the owner panels (BillboardGui) to the static OwnerSign anchors.
+-- Plots are NEVER auto-assigned: the player picks a free plot after creating/loading a country.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,8 +26,9 @@ local services
 local remotes
 local plotOwners = {} -- [index] = { player = Player, countryName = string, flagId = string }
 local playerPlots = {} -- [Player] = index
-local plotModels = {} -- [index] = Model
-local signs = {} -- [index] = { gui, name, flag, country }
+local plotModels = {} -- [index] = Model (static, from the place file)
+local signs = {} -- [index] = { gui, name, flag, flagImage, country }
+local mapReport = { ok = false, missing = {} }
 
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
@@ -35,9 +41,10 @@ local function ensureFolder(parent: Instance, name: string): Folder
 	return folder
 end
 
+-- Runtime containers only (buildings / roads / vehicles / NPCs). Declared in default.project.json,
+-- created here only when the place was opened without Rojo.
 local function rootFolders()
 	return {
-		Map = ensureFolder(Workspace, "Map"),
 		Buildings = ensureFolder(Workspace, "Buildings"),
 		Roads = ensureFolder(Workspace, "Roads"),
 		Vehicles = ensureFolder(Workspace, "Vehicles"),
@@ -45,141 +52,105 @@ local function rootFolders()
 	}
 end
 
-local function color(t)
-	return Color3.new(t[1], t[2], t[3])
-end
-
-local function block(parent, name, size: Vector3, cframe: CFrame, col: Color3, material, collide: boolean?)
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Anchored = true
-	p.CanCollide = collide ~= false
-	p.CanTouch = false
-	p.Size = size
-	p.CFrame = cframe
-	p.Color = col
-	p.Material = material or Enum.Material.SmoothPlastic
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Parent = parent
-	return p
-end
-
--- OCEAN + CENTRAL ISLAND -------------------------------------------------------------------
-local function buildOcean(map)
-	local m = GameConfig.Map
-	local old = map:FindFirstChild("Ocean")
-	if old then
-		old:Destroy()
+-- TERRAIN WATER -------------------------------------------------------------------------------
+-- Real Roblox Terrain water + sand seabed, filled once at server start in 256-stud chunks.
+function WorldService.fillTerrainWater()
+	if Workspace:GetAttribute("WarStateWaterFilled") then
+		return
 	end
-	local ocean = Instance.new("Model")
-	ocean.Name = "Ocean"
-	block(ocean, "Seabed", Vector3.new(m.WaterSize, 2, m.WaterSize), CFrame.new(0, m.SeabedY - 1, 0), color(m.SeabedColor), Enum.Material.Sand)
-	local water = block(
-		ocean,
-		"Water",
-		Vector3.new(m.WaterSize, 0.4, m.WaterSize),
-		CFrame.new(0, m.WaterLevel - 0.2, 0),
-		color(m.WaterColor),
-		Enum.Material.SmoothPlastic,
-		false
-	)
-	water.Transparency = 0.2
-	water.CanQuery = false
-	water.CastShadow = false
-	ocean.Parent = map
-end
-
-local function tree(parent, x: number, z: number, scale: number, rng)
-	local trunkH = 2.2 * scale
-	block(parent, "Trunk", Vector3.new(0.5 * scale, trunkH, 0.5 * scale), CFrame.new(x, trunkH / 2, z), Color3.fromRGB(150, 112, 80), Enum.Material.Wood, false)
-	local leaf = Color3.fromRGB(112 + rng:NextInteger(0, 20), 162 + rng:NextInteger(0, 20), 98)
-	block(parent, "Leaves", Vector3.new(2.2 * scale, 1.6 * scale, 2.2 * scale), CFrame.new(x, trunkH + 0.6 * scale, z), leaf, Enum.Material.SmoothPlastic, false)
-	block(parent, "LeavesTop", Vector3.new(1.4 * scale, 1.1 * scale, 1.4 * scale), CFrame.new(x, trunkH + 1.8 * scale, z), leaf:Lerp(Color3.new(1, 1, 1), 0.08), Enum.Material.SmoothPlastic, false)
-end
-
-local function rock(parent, x: number, z: number, scale: number)
-	block(
-		parent,
-		"Rock",
-		Vector3.new(1.6 * scale, 1.0 * scale, 1.3 * scale),
-		CFrame.new(x, 0.3 * scale, z) * CFrame.Angles(0, scale, 0.1),
-		Color3.fromRGB(178, 182, 186),
-		Enum.Material.Slate,
-		false
-	)
-end
-
-local function buildCentralIsland(map)
-	local c = GameConfig.Map.CentralIsland
-	local old = map:FindFirstChild("CentralIsland")
-	if old then
-		old:Destroy()
+	local cfg = GameConfig.Map.Terrain
+	local terrain = Workspace.Terrain
+	local half = cfg.HalfSize
+	local top, bottom = cfg.WaterTopY, cfg.SeabedY
+	local sand = cfg.SeabedThickness
+	local chunk = 256
+	local x = -half
+	while x < half do
+		local sx = math.min(chunk, half - x)
+		local z = -half
+		while z < half do
+			local sz = math.min(chunk, half - z)
+			local cx, cz = x + sx / 2, z + sz / 2
+			terrain:FillBlock(CFrame.new(cx, bottom - sand / 2, cz), Vector3.new(sx, sand, sz), Enum.Material.Sand)
+			terrain:FillBlock(CFrame.new(cx, (top + bottom) / 2, cz), Vector3.new(sx, top - bottom, sz), Enum.Material.Water)
+			z += chunk
+		end
+		x += chunk
 	end
-	local island = Instance.new("Model")
-	island.Name = "CentralIsland"
-	island:SetAttribute("Purpose", "Future land battles")
-	local sand = color(GameConfig.Territory.SandColor)
-	block(island, "Beach", Vector3.new(c.Size, 6, c.Size), CFrame.new(c.CenterX, -3.15, c.CenterZ), sand, Enum.Material.Sand)
-	local inner = c.Size - c.BeachWidth * 2
-	local ground = block(island, "Ground", Vector3.new(inner, 6, inner), CFrame.new(c.CenterX, -3, c.CenterZ), color(c.Color), Enum.Material.Grass)
-	island.PrimaryPart = ground
+	Workspace:SetAttribute("WarStateWaterFilled", true)
+	Workspace:SetAttribute("WarStateWaterTopY", top)
+end
 
-	local deco = Instance.new("Folder")
-	deco.Name = "Decorations"
-	deco.Parent = island
-	local d = GameConfig.Map.Decorations
-	local rng = Random.new(d.Seed)
-	local limit = inner / 2 - 6
-	local placed = 0
-	local attempts = 0
-	while placed < d.Trees and attempts < 200 do
-		attempts += 1
-		local x = rng:NextNumber(-limit, limit)
-		local z = rng:NextNumber(-limit, limit)
-		if math.abs(x) > 26 or math.abs(z) > 26 then
-			tree(deco, c.CenterX + x, c.CenterZ + z, rng:NextNumber(0.9, 1.4), rng)
-			placed += 1
+-- STATIC MAP ----------------------------------------------------------------------------------
+local function validateStaticMap()
+	local missing = {}
+	local map = Workspace:FindFirstChild("Map")
+	if not map then
+		table.insert(missing, "Workspace.Map")
+	else
+		for _, name in ipairs({ "CentralIsland", "Boundaries", "Plots" }) do
+			if not map:FindFirstChild(name) then
+				table.insert(missing, "Map." .. name)
+			end
+		end
+		local plotsFolder = map:FindFirstChild("Plots")
+		for index = 1, Plots.maxPlots() do
+			local model = plotsFolder and plotsFolder:FindFirstChild("Plot_" .. index)
+			if not model then
+				table.insert(missing, "Map.Plots.Plot_" .. index)
+			else
+				plotModels[index] = model
+				local ground = model:FindFirstChild("Ground")
+				if ground and ground:IsA("BasePart") then
+					model.PrimaryPart = ground
+				else
+					table.insert(missing, "Plot_" .. index .. ".Ground")
+				end
+				if not model:FindFirstChild("Exit") then
+					table.insert(missing, "Plot_" .. index .. ".Exit")
+				end
+			end
 		end
 	end
-	for _ = 1, d.Rocks do
-		local x = rng:NextNumber(-limit, limit)
-		local z = rng:NextNumber(-limit, limit)
-		rock(deco, c.CenterX + x, c.CenterZ + z, rng:NextNumber(0.8, 1.6))
+	mapReport = { ok = #missing == 0, missing = missing }
+	if #missing > 0 then
+		warn(
+			"[WorldService] Static map incomplete: "
+				.. table.concat(missing, ", ")
+				.. ". Run `python tools/gen_static_map.py` and rebuild with `rojo build`."
+		)
 	end
-
-	local lobby = GameConfig.Map.LobbySpawn
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "LobbySpawn"
-	spawn.Anchored = true
-	spawn.Neutral = true
-	spawn.Duration = 0
-	spawn.Size = Vector3.new(8, 0.4, 8)
-	spawn.CFrame = CFrame.new(lobby[1], 0.2, lobby[3])
-	spawn.Color = Theme.Colors.AccentSoft
-	spawn.Material = Enum.Material.SmoothPlastic
-	spawn.TopSurface = Enum.SurfaceType.Smooth
-	spawn.Parent = island
-	island.Parent = map
+	return mapReport
 end
 
--- PLAYER PLOTS -------------------------------------------------------------------------------
+function WorldService.getMapReport()
+	return mapReport
+end
+
+-- OWNER PANELS --------------------------------------------------------------------------------
 local function createSign(index: number, plotModel: Model, bounds)
-	local anchor = Instance.new("Part")
-	anchor.Name = "OwnerSign"
-	anchor.Anchored = true
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	anchor.CanTouch = false
-	anchor.Transparency = 1
-	anchor.Size = Vector3.new(1, 1, 1)
-	anchor.CFrame = CFrame.new(bounds.centerX, bounds.surfaceY + 20, bounds.centerZ)
-	anchor.Parent = plotModel
+	local anchor = plotModel:FindFirstChild("OwnerSign")
+	if not anchor then
+		anchor = Instance.new("Part")
+		anchor.Name = "OwnerSign"
+		anchor.Anchored = true
+		anchor.CanCollide = false
+		anchor.CanQuery = false
+		anchor.CanTouch = false
+		anchor.Transparency = 1
+		anchor.Size = Vector3.new(1, 1, 1)
+		anchor.CFrame = CFrame.new(bounds.centerX, bounds.surfaceY + 20, bounds.centerZ)
+		anchor.Parent = plotModel
+	end
+	local old = anchor:FindFirstChild("OwnerPanel")
+	if old then
+		old:Destroy()
+	end
 
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "OwnerPanel"
-	gui.Size = UDim2.fromOffset(176, 84)
-	gui.MaxDistance = 700
+	gui.Size = UDim2.fromOffset(190, 88)
+	gui.MaxDistance = 900
 	gui.LightInfluence = 0
 	gui.AlwaysOnTop = false
 	gui.ResetOnSpawn = false
@@ -227,7 +198,7 @@ local function createSign(index: number, plotModel: Model, bounds)
 	flagImage.ScaleType = Enum.ScaleType.Crop
 	flagImage.Visible = false
 	flagImage.Parent = card
-	local countryLabel = text("CountryName", 58, 18, Theme.Fonts.Medium, 13, Theme.Colors.AccentDark)
+	local countryLabel = text("CountryName", 60, 20, Theme.Fonts.Medium, 13, Theme.Colors.AccentDark)
 	signs[index] = { gui = gui, name = nameLabel, flag = flagLabel, flagImage = flagImage, country = countryLabel }
 end
 
@@ -257,104 +228,10 @@ local function updateSign(index: number)
 	end
 end
 
-local function buildExit(plotModel: Model, index: number, bounds)
-	local exit = Plots.getExit(index)
-	local m = GameConfig.Map
-	local width = m.BridgeWidth
-	local y = bounds.surfaceY
-	local folder = Instance.new("Model")
-	folder.Name = "Exit"
-	folder:SetAttribute("ExitSide", exit.side)
-	folder:SetAttribute("ExitIx", exit.ix)
-	folder:SetAttribute("ExitIz", exit.iz)
-
-	local function strip(name, ax, az, bx, bz, w, thick, col, material, top)
-		local dx, dz = bx - ax, bz - az
-		local length = math.sqrt(dx * dx + dz * dz)
-		if length < 0.05 then
-			return nil
-		end
-		local mid = Vector3.new((ax + bx) / 2, top - thick / 2, (az + bz) / 2)
-		local cf = CFrame.lookAt(mid, mid + Vector3.new(dx, 0, dz))
-		return block(folder, name, Vector3.new(w, thick, length), cf, col, material)
-	end
-	local asphalt = Color3.fromRGB(124, 128, 134)
-	-- Exit lane across the sand rim (plot edge -> bridge start)
-	strip("ExitLane", exit.edgeX, exit.edgeZ, exit.bridgeStartX, exit.bridgeStartZ, width, 0.4, asphalt, Enum.Material.Concrete, y + 0.08)
-	-- Bridge over water (bridge start -> central island landing)
-	strip("Bridge", exit.bridgeStartX, exit.bridgeStartZ, exit.bridgeEndX, exit.bridgeEndZ, width, 0.8, color(m.BridgeColor), Enum.Material.Concrete, y + 0.08)
-	local v = Plots.SideVector[exit.side]
-	local px, pz = -v[2], v[1] -- perpendicular
-	for _, s in ipairs({ -1, 1 }) do
-		local ox, oz = px * s * (width / 2 + 0.15), pz * s * (width / 2 + 0.15)
-		strip("Rail", exit.bridgeStartX + ox, exit.bridgeStartZ + oz, exit.bridgeEndX + ox, exit.bridgeEndZ + oz, 0.3, 0.6, color(m.BridgeRailColor), Enum.Material.SmoothPlastic, y + 0.6)
-		-- Gate posts at the plot edge
-		block(
-			folder,
-			"GatePost",
-			Vector3.new(0.5, 3, 0.5),
-			CFrame.new(exit.edgeX + px * s * (width / 2 + 0.6), y + 1.5, exit.edgeZ + pz * s * (width / 2 + 0.6)),
-			Theme.Colors.Accent,
-			Enum.Material.SmoothPlastic,
-			false
-		)
-	end
-	local beamLength = width + 1.7
-	local beamSize = (v[1] == 0) and Vector3.new(beamLength, 0.4, 0.4) or Vector3.new(0.4, 0.4, beamLength)
-	block(folder, "GateBeam", beamSize, CFrame.new(exit.edgeX, y + 3.1, exit.edgeZ), Theme.Colors.Background, Enum.Material.SmoothPlastic, false)
-	folder.Parent = plotModel
-end
-
-local function buildPlot(map, index: number)
-	local bounds = Plots.getBounds(index)
-	local t = GameConfig.Territory
-	local plotsFolder = ensureFolder(map, "Plots")
-	local old = plotsFolder:FindFirstChild("Plot_" .. index)
-	if old then
-		old:Destroy()
-	end
-	local plotModel = Instance.new("Model")
-	plotModel.Name = "Plot_" .. index
-	plotModel:SetAttribute(Constants.Attributes.PlotIndex, index)
-	plotModel:SetAttribute("OwnerUserId", 0)
-
-	local islandSize = t.Size + t.RimWidth * 2
-	block(plotModel, "Rim", Vector3.new(islandSize, 6, islandSize), CFrame.new(bounds.centerX, bounds.surfaceY - 3.12, bounds.centerZ), color(t.SandColor), Enum.Material.Sand)
-	local ground = block(plotModel, "Ground", Vector3.new(t.Size, t.Thickness, t.Size), CFrame.new(bounds.centerX, bounds.surfaceY - t.Thickness / 2, bounds.centerZ), color(t.Color), Enum.Material.Grass)
-	ground:SetAttribute(Constants.Attributes.PlotIndex, index)
-	plotModel.PrimaryPart = ground
-
-	local border = t.BorderWidth
-	local sides = {
-		{ Vector3.new(t.Size, 0.06, border), Vector3.new(0, 0, -t.Size / 2 + border / 2) },
-		{ Vector3.new(t.Size, 0.06, border), Vector3.new(0, 0, t.Size / 2 - border / 2) },
-		{ Vector3.new(border, 0.06, t.Size), Vector3.new(-t.Size / 2 + border / 2, 0, 0) },
-		{ Vector3.new(border, 0.06, t.Size), Vector3.new(t.Size / 2 - border / 2, 0, 0) },
-	}
-	for i, side in ipairs(sides) do
-		local p = block(plotModel, "Border" .. i, side[1], CFrame.new(bounds.centerX, bounds.surfaceY + 0.03, bounds.centerZ) + side[2], color(t.BorderColor), Enum.Material.SmoothPlastic, false)
-		p.CanQuery = false
-	end
-	buildExit(plotModel, index, bounds)
-	createSign(index, plotModel, bounds)
-	plotModel.Parent = plotsFolder
-	plotModels[index] = plotModel
-	updateSign(index)
-end
-
-local function buildMap()
-	local folders = rootFolders()
-	buildOcean(folders.Map)
-	buildCentralIsland(folders.Map)
-	for index = 1, Plots.maxPlots() do
-		buildPlot(folders.Map, index)
-	end
-end
-
 -- OWNERSHIP ----------------------------------------------------------------------------------
 local function createPlotFolders(index: number, owner: Player)
 	local folders = rootFolders()
-	for _, key in ipairs({ "Buildings", "Roads" }) do
+	for _, key in ipairs({ "Buildings", "Roads", "Vehicles" }) do
 		local plotFolderName = "Plot_" .. index
 		local old = folders[key]:FindFirstChild(plotFolderName)
 		if old then
@@ -370,7 +247,7 @@ end
 
 local function destroyPlotFolders(index: number)
 	local folders = rootFolders()
-	for _, key in ipairs({ "Buildings", "Roads" }) do
+	for _, key in ipairs({ "Buildings", "Roads", "Vehicles" }) do
 		local inst = folders[key]:FindFirstChild("Plot_" .. index)
 		if inst then
 			inst:Destroy()
@@ -433,6 +310,15 @@ function WorldService.getPlotFolder(player: Player, kind: string): Folder?
 	end
 	local root = Workspace:FindFirstChild(kind)
 	return root and root:FindFirstChild("Plot_" .. index) or nil
+end
+
+-- All players that currently own a plot (used by the economy / traffic / railway cycles).
+function WorldService.getPlotOwners()
+	local list = {}
+	for player in pairs(playerPlots) do
+		table.insert(list, player)
+	end
+	return list
 end
 
 local function spawnCFrame(index: number)
@@ -515,10 +401,19 @@ function WorldService.leave(player: Player)
 	WorldService.release(player)
 end
 
+-- Runs at server start, before players join: no map geometry is created here.
 function WorldService.init(allServices)
 	services = allServices
 	remotes = allServices.Remotes
-	buildMap()
+	rootFolders()
+	WorldService.fillTerrainWater()
+	validateStaticMap()
+	for index, model in pairs(plotModels) do
+		model:SetAttribute("OwnerUserId", 0)
+		createSign(index, model, Plots.getBounds(index))
+		updateSign(index)
+	end
+	Workspace:SetAttribute("WarStateMapReady", mapReport.ok)
 end
 
 local function hookCharacter(player: Player)
@@ -535,6 +430,7 @@ function WorldService.start()
 	remotes[Constants.Remotes.GetPlots].OnServerInvoke = function(_player)
 		return { ok = true, plots = WorldService.listPlots() }
 	end
+	-- Character hook only (teleport back to the owned plot on respawn). No map work here.
 	Players.PlayerAdded:Connect(hookCharacter)
 	for _, player in ipairs(Players:GetPlayers()) do
 		hookCharacter(player)

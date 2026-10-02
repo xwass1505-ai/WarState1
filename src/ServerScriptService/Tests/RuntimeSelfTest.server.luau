@@ -1,10 +1,12 @@
 -- RuntimeSelfTest: runs automatically in Studio Play (server side) and prints PASS/FAIL.
 -- It exercises the REAL shared modules inside Roblox (registry, defaults, migration, placement,
 -- road drag lines, road graph + exits, building sizes, water/power coverage, shortage stages,
--- population). Result is also written to ReplicatedStorage attribute "WarStateSelfTest".
+-- population, static map + terrain water, economy, unlocks, resources, traffic and railway rules).
+-- Result is also written to ReplicatedStorage attribute "WarStateSelfTest".
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 if not RunService:IsStudio() then
 	return
@@ -101,6 +103,46 @@ for i = 1, Plots.maxPlots() do
 	local exit = Plots.getExit(i)
 	check("Plot " .. i .. " has an exit tile on its edge", exit.ix >= 0 and exit.iz >= 0 and #exit.waypoints >= 4)
 end
+
+-- Static map (Phase 1): part of the place file, present before any player joins.
+local waitStart = os.clock()
+while not ReplicatedStorage:GetAttribute("WarStateServerReady") and os.clock() - waitStart < 20 do
+	task.wait(0.2)
+end
+local map = Workspace:FindFirstChild("Map")
+check("Static map exists in the place", map ~= nil)
+if map then
+	check("Central island exists", map:FindFirstChild("CentralIsland") ~= nil)
+	check("Invisible boundaries exist", map:FindFirstChild("Boundaries") ~= nil)
+	local central = map:FindFirstChild("CentralIsland")
+	if central then
+		check("Central island has trees", central:FindFirstChild("Trees") ~= nil and #central.Trees:GetChildren() > 20)
+		check("Central island has bushes", central:FindFirstChild("Bushes") ~= nil and #central.Bushes:GetChildren() > 20)
+		check("Central island has rocks", central:FindFirstChild("Rocks") ~= nil and #central.Rocks:GetChildren() > 10)
+		check("Central island has dirt paths", central:FindFirstChild("Paths") ~= nil and #central.Paths:GetChildren() > 20)
+	end
+	local boundaries = map:FindFirstChild("Boundaries")
+	if boundaries then
+		for _, wall in ipairs(boundaries:GetChildren()) do
+			check("Boundary " .. wall.Name .. " is invisible and solid", wall:IsA("BasePart") and wall.Transparency == 1 and wall.CanCollide)
+		end
+	end
+	local plotsFolder = map:FindFirstChild("Plots")
+	for i = 1, Plots.maxPlots() do
+		local plotModel = plotsFolder and plotsFolder:FindFirstChild("Plot_" .. i)
+		check("Static plot " .. i .. " exists", plotModel ~= nil)
+		if plotModel then
+			local exitModel = plotModel:FindFirstChild("Exit")
+			check("Plot " .. i .. " has exit + bridge", exitModel ~= nil and exitModel:FindFirstChild("Bridge") ~= nil)
+			local sign = plotModel:FindFirstChild("OwnerSign")
+			check("Plot " .. i .. " has owner panel", sign ~= nil and sign:FindFirstChild("OwnerPanel") ~= nil)
+		end
+	end
+end
+check("Terrain water filled at server start", Workspace:GetAttribute("WarStateWaterFilled") == true)
+local region = Region3.new(Vector3.new(0, -8, -332), Vector3.new(4, -4, -328)):ExpandToGrid(4)
+local materials = Workspace.Terrain:ReadVoxels(region, 4)
+check("Real terrain water between islands", materials[1][1][1] == Enum.Material.Water, tostring(materials[1][1][1]))
 
 -- Building sizes (small buildings ~2 studs, larger ones only slightly bigger)
 for _, def in ipairs(BuildingConfig.Buildings) do

@@ -5,7 +5,9 @@
 --     plot = Plots bounds (the requesting player's OWN plot),
 --     buildingRects = { Rect, ... }, -- world-space footprints of existing buildings
 --     roadCells = { ["ix:iz"] = Rect, ... } -- world-space rects of existing road tiles
+--     railCells = { ["ix:iz"] = Rect, ... } -- (rail drag only) existing rail track tiles
 -- }
+-- Rail tiles are also part of buildingRects for building / road validation (nothing overlaps a track).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -26,6 +28,9 @@ PlacementRules.Reasons = {
 	UnknownType = "Unknown type",
 	RoadTooLong = "Road is too long",
 	NotEnoughTreasury = "Not enough treasury",
+	RailOccupied = "Track already here",
+	OverlapRail = "Overlaps a rail track",
+	CrossesRoad = "Rails cannot cross roads",
 }
 
 function PlacementRules.plotRect(plot)
@@ -208,6 +213,36 @@ function PlacementRules.validateRoadLine(cells, ctx)
 		return false, PlacementRules.Reasons.RoadOccupied, tiles, 0
 	end
 	return true, PlacementRules.Reasons.Ok, tiles, newCount
+end
+
+-- Rail drag line (same grid as roads). Existing track tiles become junctions; roads and buildings
+-- block the line. ctx.buildingRects must NOT contain the rail tiles themselves.
+function PlacementRules.validateRailLine(cells, ctx)
+	local roadAsBlocked = {}
+	for _, rect in ipairs(ctx.buildingRects) do
+		table.insert(roadAsBlocked, rect)
+	end
+	local blockers = { plot = ctx.plot, roadCells = ctx.railCells or {}, buildingRects = roadAsBlocked }
+	local ok, reason, tiles, newCount = PlacementRules.validateRoadLine(cells, blockers)
+	-- Roads are checked separately so the reason is clear.
+	local firstReason = nil
+	for _, tile in ipairs(tiles) do
+		if tile.valid and not tile.existing and ctx.roadCells[GridMath.cellKey(tile.ix, tile.iz)] then
+			tile.valid = false
+			tile.reason = PlacementRules.Reasons.CrossesRoad
+			newCount -= 1
+		end
+		if not tile.valid and firstReason == nil then
+			firstReason = tile.reason
+		end
+	end
+	if firstReason then
+		return false, firstReason, tiles, newCount
+	end
+	if not ok and reason == PlacementRules.Reasons.RoadOccupied then
+		return false, PlacementRules.Reasons.RailOccupied, tiles, 0
+	end
+	return ok, reason, tiles, newCount
 end
 
 return PlacementRules

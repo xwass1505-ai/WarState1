@@ -47,6 +47,7 @@ local ORDER = {
 	{ "Resources", "ResourceService" },
 	{ "Roads", "RoadService" },
 	{ "Buildings", "BuildingService" },
+	{ "Railway", "RailService" },
 	{ "Construction", "ConstructionService" },
 	{ "Water", "WaterService" },
 	{ "Power", "PowerService" },

@@ -1,54 +1,79 @@
 {
   "Categories": [
     {
-      "Id": "Roads",
-      "DisplayName": "Roads",
-      "Status": "IMPLEMENTED"
+      "Id": "CIVILIAN",
+      "DisplayName": "Civilian",
+      "Accent": [
+        72,
+        178,
+        112
+      ],
+      "Groups": [
+        "Roads",
+        "Residential",
+        "Business",
+        "Utilities",
+        "Resources",
+        "Industry",
+        "Storage",
+        "Transport"
+      ]
     },
     {
-      "Id": "Residential",
-      "DisplayName": "Residential",
-      "Status": "IMPLEMENTED"
-    },
-    {
-      "Id": "Business",
-      "DisplayName": "Business",
-      "Status": "IMPLEMENTED"
-    },
-    {
-      "Id": "Industry",
-      "DisplayName": "Industry",
-      "Status": "IMPLEMENTED"
-    },
-    {
-      "Id": "Infrastructure",
-      "DisplayName": "Infrastructure",
-      "Status": "IMPLEMENTED"
-    },
-    {
-      "Id": "Military",
+      "Id": "MILITARY",
       "DisplayName": "Military",
-      "Status": "PLANNED"
+      "Accent": [
+        222,
+        92,
+        92
+      ],
+      "Groups": [
+        "Production",
+        "Army",
+        "Defense",
+        "Air",
+        "Logistics"
+      ]
     },
     {
-      "Id": "Services",
-      "DisplayName": "Services",
-      "Status": "PLANNED"
+      "Id": "RESEARCH",
+      "DisplayName": "Research",
+      "Accent": [
+        128,
+        104,
+        226
+      ],
+      "Groups": [
+        "Research"
+      ]
+    }
+  ],
+  "Groups": {
+    "Roads": "Roads",
+    "Residential": "Houses",
+    "Business": "Business",
+    "Utilities": "Water & Power",
+    "Resources": "Resources",
+    "Industry": "Industry",
+    "Storage": "Storage",
+    "Transport": "Railway",
+    "Production": "Production",
+    "Army": "Army",
+    "Defense": "Air Defense",
+    "Air": "Air",
+    "Logistics": "Storage",
+    "Research": "Research"
+  },
+  "DrawTools": [
+    {
+      "Kind": "Road",
+      "Id": "Straight",
+      "Group": "Roads"
     },
     {
-      "Id": "Agriculture",
-      "DisplayName": "Agriculture",
-      "Status": "PLANNED"
-    },
-    {
-      "Id": "Resources",
-      "DisplayName": "Resources",
-      "Status": "PLANNED"
-    },
-    {
-      "Id": "Other",
-      "DisplayName": "Other",
-      "Status": "PLANNED"
+      "Kind": "Rail",
+      "Id": "RailTrack",
+      "Group": "Transport"
     }
   ]
 }

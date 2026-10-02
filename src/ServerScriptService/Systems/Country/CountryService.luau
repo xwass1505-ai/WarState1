@@ -72,7 +72,8 @@ local function snapshot(player)
 		return { Active = false, Persistent = session and session.persistent or false }
 	end
 	local plotIndex = services.WorldService.getPlotIndex(player)
-	local built = services.StatsService.build(country)
+	local built = services.StatsService.build(country, player)
+	local branch = techById[country.TechnologyBranch or ""]
 	return {
 		Active = true,
 		NeedsPlot = plotIndex == nil,
@@ -82,7 +83,10 @@ local function snapshot(player)
 		FlagId = country.FlagId,
 		Continent = country.Continent,
 		TechnologyBranch = country.TechnologyBranch,
-		Treasury = country.Treasury or 0,
+		TechnologyName = branch and branch.DisplayName or country.TechnologyBranch,
+		Treasury = math.floor(country.Treasury or 0),
+		Coal = country.Coal or 0,
+		IronOre = country.IronOre or 0,
 		Oil = country.Oil,
 		Fuel = country.Fuel,
 		Steel = country.Steel,
@@ -101,6 +105,18 @@ local function snapshot(player)
 		WaterList = built.WaterList,
 		PowerList = built.PowerList,
 		ExtraRoads = built.ExtraRoads,
+		Overview = built.Overview,
+		Transport = built.Transport,
+		Resources = built.Resources,
+		StorageCapacity = built.StorageCapacity,
+		Research = built.Research,
+		Economy = {
+			Cycle = built.Overview.Cycle,
+			Income = built.Overview.Income,
+			Expenses = built.Overview.Expenses,
+			Net = built.Overview.Net,
+			LastNet = built.Overview.LastNet,
+		},
 	}
 end
 CountryService.snapshot = snapshot
@@ -235,6 +251,7 @@ local function handleClaimPlot(player, plotIndex)
 		end
 		country.LastPlotIndex = plotIndex
 		services.RoadService.loadCountry(player, country)
+		services.RailService.loadCountry(player, country)
 		services.BuildingService.loadCountry(player, country)
 		services.PopulationService.recalculate(country)
 		services.WaterService.recompute(player)
@@ -257,6 +274,7 @@ local function handleLeave(player)
 		services.DataService.saveActive(player)
 		services.ConstructionService.clearPlayer(player)
 		services.RoadService.clearPlayer(player)
+		services.RailService.clearPlayer(player)
 		services.BuildingService.clearPlayer(player)
 		services.WorldService.release(player)
 		services.WorldService.teleportToLobby(player)

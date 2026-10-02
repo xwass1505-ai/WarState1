@@ -17,3 +17,4 @@ def read(rel):
 
 def luau_files():
     return sorted(list(SRC.rglob("*.luau")) + list((ROOT / "plugin").rglob("*.luau")))
+
