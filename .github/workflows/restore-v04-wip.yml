@@ -1,4 +1,5 @@
 name: Restore v0.4 WIP on top of Phase 1
+# Triggered by the GitHub-connected assistant.
 
 on:
   push:
