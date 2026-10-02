@@ -1,33 +1,24 @@
 # WAR STATE - DEVELOPMENT_ROADMAP.md
 
-> Future plan only. What exists today is in PROJECT.md.
+> Future plan + phase log. What exists today is in PROJECT.md.
 
-## Done in Phase 2 (v0.2.0) - see PROJECT.md
-Visual overhaul, main screen, plot selection (6 plots), plot ownership + owner panels, island map with exits/bridges,
-small buildings, single Straight Road with drag build and junction curbs, demolish, construction bars,
-Water/Power systems, Stats panel, save schema v2 + migration.
+## v0.3 phases (branch warstate-v0.3, each phase = green GitHub Actions with real Rojo 7.7.0)
+- [x] **Phase 1 - Static map**: map in the place file, no runtime/PlayerAdded generation, big central island,
+      x3 spacing, Terrain water at server start, invisible boundaries, trees/bushes/rocks/dirt paths, better bridges, exits.
+- [ ] **Phase 2 - UI / Build Menu / Economy**: CIVILIAN / MILITARY / RESEARCH only, wide bottom menu, vertical categories,
+      cards with lock state, population unlocks (no deadlock at 0), Treasury, cost / income / expense, 30 s cycles, HUD.
+- [ ] **Phase 3 - Resources / Industry**: Coal Mine, Iron Mine, Oil Well, Refinery, Steel Mill, Warehouse, chains.
+- [ ] **Phase 4 - Civilian traffic**: every 60 s ceil(houses/2) cars, House -> Shop/Gas Station/Office on real roads.
+- [ ] **Phase 5 - Railway**: Rail Track, Railway Station, Freight Train, resource logistics.
+- [ ] **Phase 6 - City Stats**: 2D city map with buildings, roads, water/power overlays and coverage radii.
 
-## Next - Phase 2b: stabilize
-- Run the Studio checklist and fix runtime issues; verify with real `rojo build`
-- DataStore session locking (UpdateAsync with session id)
-- Offline construction progress (timestamp based)
+## Later
+- DataStore session locking (UpdateAsync with session id); offline construction progress
 - Verified flag image assets (only real Roblox ids)
-- Water/Power overlay on the map (colored markers per building)
-
-## Phase 3 - Economy and services
-- Income -> Treasury; turn on `GameConfig.Economy.ChargeCosts`; building costs + refunds
-- Services (clinic, school, police); commercial demand; power effects on businesses/industry
-
-## Phase 4 - Resources, industry, logistics
-- Oil Well -> Refinery -> Fuel (feeds Substation upkeep), Steel, Supplies
-- Trucks on the RoadGraph (VehicleService.routeToCentral already returns waypoints)
-
-## Phase 5 - Research (USSR / Russia, USA, Germany lines; no doctrine system)
-
-## Phase 6 - Military: tanks / IFV / military vehicles leave plots through exits and fight on the central island
-
-## Phase 7 - Unlock slots 2 and 3
+- Research tree (USSR / Russia, USA, Germany lines; no doctrine system)
+- Military: vehicles leave plots through exits and fight on the central island
+- Unlock slots 2 and 3
 
 ## Engineering rules
-Server authority for all permanent state; config in JSON; no RenderStepped on the server; event-driven recomputes;
-update PROJECT.md on every major change.
+Server authority for all permanent state; config in JSON; no RenderStepped / Heartbeat loops on the server;
+event-driven recomputes; real `rojo build` only; update PROJECT.md and this file after every phase.

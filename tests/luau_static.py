@@ -116,3 +116,4 @@ def check_luau(src, is_module):
         if not any(l.startswith("return") for l in code.split("\n")):
             errors.append("ModuleScript must have a top-level (unindented) 'return'")
     return errors
+

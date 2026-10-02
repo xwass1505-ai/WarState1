@@ -3,17 +3,14 @@
 -- Advanced Power Source (expensive, high production, large radius, higher resource upkeep).
 -- Every building record gets PowerRequired / PowerSupplied / PowerStatus
 -- (GREEN supplied, RED insufficient / no electricity, GREY not required).
--- Coverage is recomputed on events only. Upkeep (e.g. Fuel) is charged per utility tick only
--- while ResourceService is active; a source that cannot pay its upkeep goes offline.
+-- Coverage is recomputed on events only (build / demolish / completion / load / upkeep change).
+-- Future sources (power plants) only need a BuildingConfig entry with Power.Production + Radius.
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
-local GameConfig = require(Config:WaitForChild("GameConfig"))
 local BuildingConfig = require(Config:WaitForChild("BuildingConfig"))
-local Constants = require(Shared:WaitForChild("Constants"):WaitForChild("Constants"))
 local UtilityGrid = require(Shared:WaitForChild("Modules"):WaitForChild("UtilityGrid"))
 
 local PowerService = {}
@@ -48,54 +45,17 @@ function PowerService.recompute(player: Player): boolean
 	return changed
 end
 
--- Upkeep step: returns true when a source changed online/offline state.
-local function upkeepStep(country): boolean
-	if not services.ResourceService.Active then
-		return false
-	end
-	local changed = false
-	for _, record in pairs(country.Buildings) do
-		local def = defsById[record.Type]
-		local spec = def and def.Power
-		if spec and (spec.Production or 0) > 0 and record.State == Constants.BuildState.Completed then
-			local upkeep = spec.Upkeep or {}
-			local affordable = services.ResourceService.canAfford(country, upkeep)
-			local offline = not affordable
-			if offline ~= (record.PowerOffline == true) then
-				changed = true
-			end
-			record.PowerOffline = offline or nil
-			if affordable then
-				services.ResourceService.charge(country, upkeep)
-			end
-		end
-	end
-	return changed
+-- Upkeep (e.g. Substation Fuel) is paid once per economy cycle by EconomyService through
+-- ProductionRules.payUpkeep; a source that cannot pay goes offline (record.PowerOffline) and this
+-- recompute moves its consumers to RED until the upkeep can be paid again.
+function PowerService.afterUpkeep(player: Player)
+	PowerService.recompute(player)
 end
 
 function PowerService.init(allServices)
 	services = allServices
 end
 
-function PowerService.start()
-	task.spawn(function()
-		while true do
-			task.wait(GameConfig.Utilities.TickSeconds)
-			for _, player in ipairs(Players:GetPlayers()) do
-				local country = services.DataService.getCountry(player)
-				if country and services.WorldService.getPlotIndex(player) then
-					local ok, result = pcall(upkeepStep, country)
-					if ok and result then
-						PowerService.recompute(player)
-						services.DataService.markDirty(player)
-						services.CountryService.push(player)
-					elseif not ok then
-						warn("[PowerService] " .. tostring(result))
-					end
-				end
-			end
-		end
-	end)
-end
+function PowerService.start() end
 
 return PowerService

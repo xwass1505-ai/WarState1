@@ -1,11 +1,16 @@
--- HUD: TOP CENTER menu + country + population pill; BOTTOM CENTER compact BUILD button
--- (hammer icon, hover + press animation); RIGHT side STATS button.
--- Respects the Roblox Core UI safe inset (ScreenGui.ScreenInsets).
+-- HUD: TOP bar = FLAG · COUNTRY NAME · POPULATION · TREASURY (net per cycle) · TECHNOLOGY BRANCH ·
+-- CYCLE · NEXT CYCLE timer (+ water warning / saving-off chips). BOTTOM CENTER compact BUILD button
+-- (hammer icon, hover + press animation) with a Build / Demolish popover. RIGHT side STATS button.
+-- The countdown reads the server cycle time (ReplicatedStorage attribute) twice a second; no
+-- per-frame loops. Respects the Roblox Core UI safe inset (ScreenGui.ScreenInsets).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local UIKit = require(script.Parent.Parent:WaitForChild("Components"):WaitForChild("UIKit"))
-local Countries = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Modules"):WaitForChild("Countries"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Countries = require(Shared:WaitForChild("Modules"):WaitForChild("Countries"))
+local Constants = require(Shared:WaitForChild("Constants"):WaitForChild("Constants"))
 
 local C = UIKit.Theme.Colors
 local T = UIKit.Theme
@@ -75,7 +80,6 @@ local function iconButton(props)
 		UIKit.tween(scale, T.Motion.Normal, { Scale = hovering and 1.05 or 1 }, Enum.EasingStyle.Back)
 	end)
 	button.Activated:Connect(function()
-		-- Tap bounce so touch devices also see press feedback.
 		scale.Scale = 0.92
 		UIKit.tween(scale, T.Motion.Normal, { Scale = 1 }, Enum.EasingStyle.Back)
 		props.OnClick()
@@ -83,32 +87,87 @@ local function iconButton(props)
 	return button
 end
 
+local function divider(parent, order)
+	return UIKit.new("Frame", {
+		BackgroundColor3 = C.Stroke,
+		BorderSizePixel = 0,
+		Size = UDim2.fromOffset(1, 24),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+end
+
+-- Caption over value (e.g. TREASURY / $1,250).
+local function stat(parent, caption: string, order: number, minWidth: number?)
+	local holder = UIKit.new("Frame", {
+		Name = caption,
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(minWidth or 60, 34),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	UIKit.label({
+		Name = "Caption",
+		Text = caption,
+		Font = T.Fonts.Bold,
+		TextSize = 10,
+		TextColor3 = C.TextMuted,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 12),
+		Parent = holder,
+	})
+	local value = UIKit.label({
+		Name = "Value",
+		Text = "-",
+		Font = T.Fonts.Bold,
+		TextSize = T.TextSize.Small,
+		TextColor3 = C.Text,
+		Position = UDim2.fromOffset(0, 13),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 20),
+		Parent = holder,
+	})
+	return value
+end
+
+local function money(n: number): string
+	local negative = n < 0
+	local s = tostring(math.floor(math.abs(n)))
+	local formatted = string.reverse((string.gsub(string.reverse(s), "(%d%d%d)", "%1,")))
+	if string.sub(formatted, 1, 1) == "," then
+		formatted = string.sub(formatted, 2)
+	end
+	return (negative and "-$" or "$") .. formatted
+end
+HUD.money = money
+
 function HUD.new(root: ScreenGui, callbacks)
 	local self = setmetatable({}, HUD)
 	self.callbacks = callbacks
 
-	-- TOP CENTER bar
 	self.top = UIKit.new("CanvasGroup", {
-		Name = "TopCenter",
+		Name = "TopBar",
 		BackgroundColor3 = C.Background,
 		BorderSizePixel = 0,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 8),
-		Size = UDim2.fromOffset(0, 38),
+		Size = UDim2.fromOffset(0, 46),
 		AutomaticSize = Enum.AutomaticSize.X,
 		Visible = false,
 		Parent = root,
 	})
-	UIKit.corner(self.top, 999)
+	UIKit.corner(self.top, 14)
 	UIKit.stroke(self.top, C.Stroke)
-	UIKit.padding(self.top, 4, 6)
-	UIKit.list(self.top, Enum.FillDirection.Horizontal, 8, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+	UIKit.gradient(self.top, C.Background, C.Surface, 90)
+	UIKit.padding(self.top, 5, 10)
+	UIKit.list(self.top, Enum.FillDirection.Horizontal, 10, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
 
 	self.menuButton = UIKit.button({
 		Name = "Menu",
 		Text = "Menu",
 		TextSize = T.TextSize.Small,
-		Size = UDim2.fromOffset(58, 30),
+		Size = UDim2.fromOffset(56, 30),
 		Radius = 999,
 		LayoutOrder = 1,
 		Parent = self.top,
@@ -117,36 +176,47 @@ function HUD.new(root: ScreenGui, callbacks)
 		end,
 	})
 	self.flagHolder = UIKit.new("Frame", {
+		Name = "FlagHolder",
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(25, 18),
+		Size = UDim2.fromOffset(32, 23),
 		LayoutOrder = 2,
 		Parent = self.top,
 	})
-	self.nameLabel = UIKit.label({
+	self.nameLabel = stat(self.top, "COUNTRY", 3, 70)
+	divider(self.top, 4)
+	self.popLabel = stat(self.top, "POPULATION", 5, 70)
+	self.treasuryLabel = stat(self.top, "TREASURY", 6, 80)
+	self.netLabel = UIKit.label({
+		Name = "Net",
 		Text = "",
 		Font = T.Fonts.Bold,
-		TextSize = T.TextSize.Small,
+		TextSize = T.TextSize.Tiny,
+		TextColor3 = C.Success,
 		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.fromOffset(0, 30),
-		LayoutOrder = 3,
+		Size = UDim2.fromOffset(0, 34),
+		LayoutOrder = 7,
 		Parent = self.top,
 	})
-	UIKit.new("Frame", {
-		BackgroundColor3 = C.Stroke,
+	divider(self.top, 8)
+	self.techLabel = stat(self.top, "TECHNOLOGY", 9, 70)
+	self.cycleLabel = stat(self.top, "CYCLE", 10, 40)
+	self.timerLabel = stat(self.top, "NEXT CYCLE", 11, 64)
+	self.timerTrack = UIKit.new("Frame", {
+		Name = "TimerTrack",
+		BackgroundColor3 = C.Gray,
 		BorderSizePixel = 0,
-		Size = UDim2.fromOffset(1, 18),
-		LayoutOrder = 4,
+		Size = UDim2.fromOffset(46, 4),
+		LayoutOrder = 12,
 		Parent = self.top,
 	})
-	self.popLabel = UIKit.label({
-		Name = "Population",
-		Text = "Population 0 / 0",
-		TextSize = T.TextSize.Small,
-		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.fromOffset(0, 30),
-		LayoutOrder = 5,
-		Parent = self.top,
+	UIKit.corner(self.timerTrack, 999)
+	self.timerFill = UIKit.new("Frame", {
+		BackgroundColor3 = C.Accent,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(0, 1),
+		Parent = self.timerTrack,
 	})
+	UIKit.corner(self.timerFill, 999)
 	self.stageChip = UIKit.label({
 		Name = "ShortageChip",
 		Text = "",
@@ -155,7 +225,7 @@ function HUD.new(root: ScreenGui, callbacks)
 		TextSize = T.TextSize.Tiny,
 		AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.fromOffset(0, 30),
-		LayoutOrder = 6,
+		LayoutOrder = 13,
 		Visible = false,
 		Parent = self.top,
 	})
@@ -165,17 +235,17 @@ function HUD.new(root: ScreenGui, callbacks)
 		TextSize = T.TextSize.Tiny,
 		AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.fromOffset(0, 30),
-		LayoutOrder = 7,
+		LayoutOrder = 14,
 		Visible = false,
 		Parent = self.top,
 	})
 
-	-- Menu popover (under the top bar)
+	-- Menu popover
 	self.menu = UIKit.panel({
 		Name = "MenuPopover",
 		Canvas = true,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 52),
+		Position = UDim2.new(0.5, 0, 0, 62),
 		Size = UDim2.fromOffset(190, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Visible = false,
@@ -281,7 +351,30 @@ function HUD.new(root: ScreenGui, callbacks)
 			self.callbacks.onStats()
 		end,
 	})
+
+	-- Cycle countdown (2x per second while the HUD is visible).
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			if self.top.Visible then
+				self:updateTimer()
+			end
+		end
+	end)
 	return self
+end
+
+function HUD:updateTimer()
+	local nextAt = ReplicatedStorage:GetAttribute(Constants.EconomyAttributes.NextCycleAt)
+	local length = ReplicatedStorage:GetAttribute(Constants.EconomyAttributes.CycleSeconds) or 30
+	if type(nextAt) ~= "number" then
+		self.timerLabel.Text = "--"
+		return
+	end
+	local left = math.max(0, nextAt - Workspace:GetServerTimeNow())
+	self.timerLabel.Text = string.format("0:%02d", math.clamp(math.ceil(left), 0, 59))
+	local fraction = 1 - math.clamp(left / math.max(1, length), 0, 1)
+	UIKit.tween(self.timerFill, 0.45, { Size = UDim2.fromScale(fraction, 1) }, Enum.EasingStyle.Linear)
 end
 
 function HUD:toggleTools()
@@ -317,7 +410,7 @@ function HUD:setHammerVisible(visible: boolean)
 end
 
 function HUD:show()
-	UIKit.open(self.top, -8)
+	UIKit.open(self.top, -10)
 	self.hammer.Visible = true
 	self.statsButton.Visible = true
 	local base = UDim2.new(0.5, 0, 1, -16)
@@ -326,6 +419,7 @@ function HUD:show()
 	local statsBase = UDim2.new(1, -12, 0.5, 0)
 	self.statsButton.Position = statsBase + UDim2.fromOffset(80, 0)
 	UIKit.tween(self.statsButton, T.Motion.Slow, { Position = statsBase }, Enum.EasingStyle.Back)
+	self:updateTimer()
 end
 
 function HUD:hide()
@@ -343,6 +437,11 @@ local STAGE_TEXT = {
 	GRADUAL_POPULATION_DECREASE = "Population falling",
 }
 
+local function flash(label: TextLabel, color: Color3)
+	label.TextColor3 = color
+	UIKit.tween(label, T.Motion.Slow, { TextColor3 = C.Text })
+end
+
 function HUD:update(state)
 	if not state or not state.Active then
 		return
@@ -352,17 +451,31 @@ function HUD:update(state)
 		for _, child in ipairs(self.flagHolder:GetChildren()) do
 			child:Destroy()
 		end
-		local flag = UIKit.flag(self.flagHolder, Countries.get(state.FlagId or ""), 18)
+		local flag = UIKit.flag(self.flagHolder, Countries.get(state.FlagId or ""), 22)
 		flag.Size = UDim2.fromScale(1, 1)
 	end
 	self.nameLabel.Text = state.Name or ""
-	local previous = self.lastPopulation
-	self.popLabel.Text = string.format("Population %d / %d", state.Population or 0, state.HousingCapacity or 0)
-	if previous ~= nil and state.Population ~= previous then
-		self.popLabel.TextColor3 = (state.Population or 0) > previous and C.AccentDark or C.Danger
-		UIKit.tween(self.popLabel, T.Motion.Slow, { TextColor3 = C.Text })
+	local population = state.Population or 0
+	self.popLabel.Text = string.format("%d / %d", population, state.HousingCapacity or 0)
+	if self.lastPopulation ~= nil and population ~= self.lastPopulation then
+		flash(self.popLabel, population > self.lastPopulation and C.Success or C.Danger)
 	end
-	self.lastPopulation = state.Population
+	self.lastPopulation = population
+	local treasury = state.Treasury or 0
+	self.treasuryLabel.Text = money(treasury)
+	if self.lastTreasury ~= nil and treasury ~= self.lastTreasury then
+		flash(self.treasuryLabel, treasury > self.lastTreasury and C.Success or C.Danger)
+	end
+	if treasury < 0 then
+		self.treasuryLabel.TextColor3 = C.Danger
+	end
+	self.lastTreasury = treasury
+	local economy = state.Economy or {}
+	local net = economy.Net or 0
+	self.netLabel.Text = string.format("%s%s / cycle", net >= 0 and "+" or "-", money(math.abs(net)))
+	self.netLabel.TextColor3 = net >= 0 and C.Success or C.Danger
+	self.techLabel.Text = state.TechnologyName or state.TechnologyBranch or "-"
+	self.cycleLabel.Text = "#" .. tostring((economy.Cycle or 0) + 1)
 	self.saveChip.Visible = state.Persistent == false
 	local stage = state.Water and state.Water.Stage
 	local text = stage and STAGE_TEXT[stage]

@@ -103,3 +103,4 @@ def undefined_names(src):
             continue
         missing.setdefault(t.value, t.line)
     return missing
+

@@ -4,6 +4,8 @@
 -- resources) and creates a PLANNED building that ConstructionService builds over time.
 -- Demolish requests are only accepted for records that exist in the requester's own country,
 -- so nobody can build, delete or modify anything on another player's plot.
+-- v0.4: the server also checks the POPULATION UNLOCK (BuildingConfig.PopulationRequired) and the full
+-- cost table (Treasury + resources). Rail track tiles are part of the blocked footprints.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +19,8 @@ local Constants = require(Shared:WaitForChild("Constants"):WaitForChild("Constan
 local GridMath = require(Modules:WaitForChild("GridMath"))
 local PlacementRules = require(Modules:WaitForChild("PlacementRules"))
 local BuildingModels = require(Modules:WaitForChild("BuildingModels"))
+local EconomyRules = require(Modules:WaitForChild("EconomyRules"))
+require(Modules:WaitForChild("ExtraModels")) -- registers the v0.4 building variants
 
 local BuildingService = {}
 BuildingService.Name = "BuildingService"
@@ -91,11 +95,17 @@ function BuildingService.getModel(player: Player, id: string)
 	return r and r.models[id] or nil
 end
 
-function BuildingService.getBuildingRects(player: Player)
+-- Footprints that block placement: buildings + rail track tiles (world space).
+function BuildingService.getBuildingRects(player: Player, excludeRails: boolean?)
 	local result = {}
 	local r = runtime[player]
 	if r then
 		for _, rect in pairs(r.rects) do
+			table.insert(result, rect)
+		end
+	end
+	if not excludeRails and services.RailService then
+		for _, rect in pairs(services.RailService.getRailRects(player)) do
 			table.insert(result, rect)
 		end
 	end
@@ -194,6 +204,9 @@ local function handlePlace(player, request)
 	if not ok then
 		return { ok = false, error = reason }
 	end
+	if not EconomyRules.isUnlocked(def, country.Population) then
+		return { ok = false, error = EconomyRules.unlockText(def) }
+	end
 	local affordable, costError = services.ResourceService.canAfford(country, def.Cost)
 	if not affordable then
 		return { ok = false, error = costError }
@@ -240,6 +253,10 @@ function BuildingService.demolish(player: Player, id: any): (boolean, string?)
 		return false, "Not your building"
 	end
 	country.Buildings[id] = nil
+	local def = defsById[record.Type]
+	if def and record.State ~= Constants.BuildState.Completed then
+		services.ResourceService.refund(country, def.Cost, 0.5) -- cancelled construction: half back
+	end
 	services.ConstructionService.untrack(player, id)
 	local r = runtime[player]
 	if r then
@@ -271,6 +288,8 @@ local function handleDemolish(player, request)
 		ok, err = services.RoadService.demolish(player, request.Id)
 	elseif request.Kind == "Building" then
 		ok, err = BuildingService.demolish(player, request.Id)
+	elseif request.Kind == "Rail" then
+		ok, err = services.RailService.demolish(player, request.Id)
 	else
 		return { ok = false, error = "Invalid request" }
 	end

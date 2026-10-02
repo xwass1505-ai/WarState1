@@ -1,5 +1,5 @@
 {
-  "SchemaVersion": 2,
+  "SchemaVersion": 3,
   "DataStoreName": "WarState_Slots_v1",
   "DataStoreRetries": 3,
   "AutosaveSeconds": 60,
@@ -49,83 +49,96 @@
     ]
   },
   "Map": {
-    "WaterSize": 1400,
-    "WaterLevel": -0.6,
-    "SeabedY": -9,
-    "WaterColor": [
-      0.55,
-      0.78,
-      0.93
-    ],
-    "SeabedColor": [
-      0.86,
-      0.8,
-      0.64
-    ],
+    "Static": true,
+    "BaseY": -24,
+    "Terrain": {
+      "WaterTopY": -1,
+      "SeabedY": -24,
+      "HalfSize": 860,
+      "SeabedThickness": 8
+    },
+    "Boundary": {
+      "HalfSize": 720,
+      "Height": 180,
+      "Thickness": 4
+    },
     "CentralIsland": {
       "CenterX": 0,
       "CenterZ": 0,
-      "Size": 360,
-      "BeachWidth": 18,
+      "Size": 520,
+      "BeachWidth": 22,
+      "PlazaRadius": 18,
       "Color": [
         0.58,
         0.76,
         0.5
       ]
     },
-    "BridgeWidth": 4,
+    "BridgeWidth": 6,
     "BridgeColor": [
-      0.62,
-      0.64,
-      0.67
+      0.78,
+      0.8,
+      0.82
     ],
     "BridgeRailColor": [
-      0.9,
-      0.92,
-      0.94
+      0.95,
+      0.96,
+      0.98
+    ],
+    "BridgeAsphaltColor": [
+      0.42,
+      0.44,
+      0.47
     ],
     "Plots": [
       {
         "Index": 1,
-        "CenterX": -140,
-        "CenterZ": -300,
+        "CenterX": -200,
+        "CenterZ": -464,
         "ExitSide": "S"
       },
       {
         "Index": 2,
-        "CenterX": 140,
-        "CenterZ": -300,
+        "CenterX": 200,
+        "CenterZ": -464,
         "ExitSide": "S"
       },
       {
         "Index": 3,
-        "CenterX": -300,
+        "CenterX": -464,
         "CenterZ": 0,
         "ExitSide": "E"
       },
       {
         "Index": 4,
-        "CenterX": 300,
+        "CenterX": 464,
         "CenterZ": 0,
         "ExitSide": "W"
       },
       {
         "Index": 5,
-        "CenterX": -140,
-        "CenterZ": 300,
+        "CenterX": -200,
+        "CenterZ": 464,
         "ExitSide": "N"
       },
       {
         "Index": 6,
-        "CenterX": 140,
-        "CenterZ": 300,
+        "CenterX": 200,
+        "CenterZ": 464,
         "ExitSide": "N"
       }
     ],
     "Decorations": {
-      "Trees": 18,
-      "Rocks": 10,
-      "Seed": 7
+      "Trees": 80,
+      "Bushes": 70,
+      "Rocks": 40,
+      "Seed": 7,
+      "PathWidth": 3,
+      "PathColor": [
+        0.6,
+        0.47,
+        0.33
+      ]
     },
     "LobbySpawn": [
       0,
@@ -156,14 +169,55 @@
     }
   },
   "Economy": {
-    "ChargeCosts": false,
-    "Currency": "Treasury"
+    "ChargeCosts": true,
+    "Currency": "Treasury",
+    "CycleSeconds": 30,
+    "StartingTreasury": 0,
+    "AllowDebt": true,
+    "RoadTilesPerExpense": 10,
+    "RailTilesPerExpense": 10,
+    "UtilityPenalty": 0.5,
+    "_Note": "Treasury can drop below 0 (debt); anything that costs Treasury needs Treasury >= cost."
+  },
+  "Traffic": {
+    "IntervalSeconds": 60,
+    "CarSpeed": 8,
+    "MaxCarsPerWave": 12,
+    "LaneOffset": 0.38,
+    "CarLifetimeSeconds": 40
+  },
+  "Railway": {
+    "IntervalSeconds": 45,
+    "TrainSpeed": 10,
+    "WagonCapacity": 20,
+    "MaxWagons": 3,
+    "WagonSpacing": 1.9,
+    "StationRadius": 18,
+    "RailBonus": 0.25,
+    "FreightIncomePerWagon": 3,
+    "Track": {
+      "Id": "RailTrack",
+      "DisplayName": "Rail Track",
+      "Cost": {
+        "Treasury": 2
+      }
+    },
+    "Cargo": [
+      "Coal",
+      "IronOre",
+      "Oil",
+      "Steel",
+      "Fuel",
+      "Supplies"
+    ]
   },
   "Migration": {
     "V1PositionScale": 0.25
   },
   "EmptyCountry": {
     "Treasury": 0,
+    "Coal": 0,
+    "IronOre": 0,
     "Oil": 0,
     "Fuel": 0,
     "Steel": 0,
@@ -189,6 +243,40 @@
         "Seconds": 0
       }
     },
-    "LastPlotIndex": 0
+    "LastPlotIndex": 0,
+    "Research": {
+      "Points": 0
+    },
+    "Railway": {
+      "Tracks": {}
+    },
+    "Economy": {
+      "Cycle": 0,
+      "LastIncome": 0,
+      "LastExpense": 0,
+      "LastNet": 0
+    }
+  },
+  "Resources": {
+    "Keys": [
+      "Coal",
+      "IronOre",
+      "Oil",
+      "Fuel",
+      "Steel",
+      "Supplies"
+    ],
+    "DisplayNames": {
+      "Coal": "Coal",
+      "IronOre": "Iron Ore",
+      "Oil": "Crude Oil",
+      "Fuel": "Fuel",
+      "Steel": "Steel",
+      "Supplies": "Supplies"
+    },
+    "BaseStorage": 60
+  },
+  "Research": {
+    "PointsPerLevel": 100
   }
 }

@@ -1,5 +1,5 @@
 -- Constants: remote names, build states, attribute names and status values.
--- Keep in sync with the Remotes folder in default.project.json (tests/test_structure.py checks it).
+-- Keep in sync with the Remotes folder in default.project.json (tests/test_structure.py checks this).
 
 local Constants = {}
 
@@ -16,6 +16,8 @@ Constants.Remotes = {
 	PlaceRoadLine = "PlaceRoadLine",
 	PlaceBuilding = "PlaceBuilding",
 	Demolish = "Demolish",
+	PlaceRailLine = "PlaceRailLine",
+	GetCityMap = "GetCityMap",
 	StateChanged = "StateChanged",
 	PlotsChanged = "PlotsChanged",
 	Notify = "Notify",
@@ -34,6 +36,8 @@ Constants.RemoteFunctions = {
 	"PlaceRoadLine",
 	"PlaceBuilding",
 	"Demolish",
+	"PlaceRailLine",
+	"GetCityMap",
 }
 
 Constants.RemoteEvents = {
@@ -68,6 +72,19 @@ Constants.ShortageOrder = {
 	"PROLONGED_SHORTAGE",
 	"POPULATION_PROBLEMS",
 	"GRADUAL_POPULATION_DECREASE",
+}
+
+Constants.Kinds = {
+	Building = "Building",
+	Road = "Road",
+	Rail = "Rail",
+	Vehicle = "Vehicle",
+}
+
+-- ReplicatedStorage attributes written by EconomyService (cycle timer shown in the HUD).
+Constants.EconomyAttributes = {
+	NextCycleAt = "EconomyNextCycleAt",
+	CycleSeconds = "EconomyCycleSeconds",
 }
 
 Constants.Attributes = {

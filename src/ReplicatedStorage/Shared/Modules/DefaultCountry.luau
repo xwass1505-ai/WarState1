@@ -42,6 +42,7 @@ function DefaultCountry.new(slotIndex: number, name: string, flagId: string, con
 	country.CreatedAt = os.time()
 	country.NextBuildingId = 1
 	country.NextRoadId = 1
+	country.Railway.NextTrackId = 1
 	return country
 end
 
@@ -87,11 +88,27 @@ local function migrateV1(country)
 	country.MigratedFromSchema = country.SchemaVersion or 1
 end
 
+-- v2 -> v3 (v0.4): economy cycles, resources (Coal, Iron Ore), research points, railway.
+-- Every new field comes from GameConfig.EmptyCountry (all zero / empty), so nothing is granted.
+-- Old saves keep their buildings, roads, treasury and population.
+local function migrateV2(country)
+	country.MigratedFromSchema = country.MigratedFromSchema or (country.SchemaVersion or 2)
+	if type(country.Railway) ~= "table" then
+		country.Railway = nil
+	end
+	if type(country.Economy) ~= "table" then
+		country.Economy = nil
+	end
+end
+
 -- Fill missing fields for older saves without granting anything.
 function DefaultCountry.migrate(country)
 	local version = tonumber(country.SchemaVersion) or 1
 	if version < 2 then
 		migrateV1(country)
+	end
+	if version < 3 then
+		migrateV2(country)
 	end
 	if country.Money ~= nil and country.Treasury == nil then
 		country.Treasury = country.Money
@@ -107,6 +124,8 @@ function DefaultCountry.migrate(country)
 	end
 	country.NextBuildingId = country.NextBuildingId or 1
 	country.NextRoadId = country.NextRoadId or 1
+	country.Railway.Tracks = country.Railway.Tracks or {}
+	country.Railway.NextTrackId = country.Railway.NextTrackId or 1
 	country.SchemaVersion = GameConfig.SchemaVersion
 	return country
 end
