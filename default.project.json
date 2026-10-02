@@ -21,6 +21,8 @@
         "PlaceRoadLine": { "$className": "RemoteFunction" },
         "PlaceBuilding": { "$className": "RemoteFunction" },
         "Demolish": { "$className": "RemoteFunction" },
+        "PlaceRailLine": { "$className": "RemoteFunction" },
+        "GetCityMap": { "$className": "RemoteFunction" },
         "StateChanged": { "$className": "RemoteEvent" },
         "PlotsChanged": { "$className": "RemoteEvent" },
         "Notify": { "$className": "RemoteEvent" }
